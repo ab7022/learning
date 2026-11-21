@@ -39,38 +39,42 @@ tools = [
 
 
 # 3. The agent loop.
-messages = [{"role": "user", "content": "What's the weather in Delhi and London?"}]
+def agent_loop(question):
+    messages = [{"role": "user", "content": question}]
 
-while True:
-    response = client.messages.create(
-        model="claude-sonnet-5-5",
-        max_tokens=1024,
-        tools=tools,
-        messages=messages,
-    )
+    while True:
+        response = client.messages.create(
+            model="claude-sonnet-5-5",
+            max_tokens=1024,
+            tools=tools,
+            messages=messages,
+        )
 
-    # Save the LLM's reply so it remembers what it asked for.
-    messages.append({"role": "assistant", "content": response.content})
+        # Save the LLM's reply so it remembers what it asked for.
+        messages.append({"role": "assistant", "content": response.content})
 
-    # No tool requested -> the LLM is done.
-    if response.stop_reason != "tool_use":
-        print("Final answer:", response.content[0].text)
-        break
+        # No tool requested -> the LLM is done.
+        if response.stop_reason != "tool_use":
+            return response.content[0].text
 
-    # The LLM chose a tool -> run it and send back the result.
-    results = []
-    for block in response.content:
-        if block.type == "tool_use":
-            print(f"LLM called {block.name} with {block.input}")
+        # The LLM chose a tool -> run it and send back the result.
+        results = []
+        for block in response.content:
+            if block.type == "tool_use":
+                print(f"LLM called {block.name} with {block.input}")
 
-            if block.name == "get_weather":
-                output = get_weather(**block.input)
+                if block.name == "get_weather":
+                    output = get_weather(**block.input)
 
-            print("  result:", output)
-            results.append({
-                "type": "tool_result",
-                "tool_use_id": block.id,  # links the result to the request
-                "content": output,
-            })
+                print("  result:", output)
+                results.append({
+                    "type": "tool_result",
+                    "tool_use_id": block.id,  # links the result to the request
+                    "content": output,
+                })
 
-    messages.append({"role": "user", "content": results})
+        messages.append({"role": "user", "content": results})
+
+
+answer = agent_loop("What's the weather in Delhi and London?")
+print("Final answer:", answer)
